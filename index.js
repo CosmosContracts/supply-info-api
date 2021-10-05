@@ -1,15 +1,12 @@
 const axios = require("axios");
 const express = require("express");
-// const { fromUtf8 } = require("@cosmjs/encoding");
-// const {
-//   AuthExtension,
-//   QueryClient,
-//   setupAuthExtension,
-//   StargateClient,
-// } = require("@cosmjs/stargate");
-// const { Tendermint34Client } = require("@cosmjs/tendermint-rpc");
-// const textEncoding = require("text-encoding");
-// var TextDecoder = textEncoding.TextDecoder;
+const { QueryClient, setupAuthExtension } = require("@cosmjs/stargate");
+const { Tendermint34Client } = require("@cosmjs/tendermint-rpc");
+const {
+  ContinuousVestingAccount,
+  DelayedVestingAccount,
+  PeriodicVestingAccount,
+} = require("cosmjs-types/cosmos/vesting/v1beta1/vesting");
 
 require("dotenv").config();
 
@@ -20,50 +17,49 @@ const vestingAccounts = process.env.VESTING_ACCOUNTS
 const app = express();
 const port = process.env.PORT || 3000;
 
-// // TODO maybe we need this auth extension to query vesting info?
-// async function makeClientWithAuth(rpcUrl) {
-//   const tmClient = await Tendermint34Client.connect(rpcUrl);
-//   return [QueryClient.withExtensions(tmClient, setupAuthExtension), tmClient];
-// }
+async function makeClientWithAuth(rpcUrl) {
+  const tmClient = await Tendermint34Client.connect(rpcUrl);
+  return [QueryClient.withExtensions(tmClient, setupAuthExtension), tmClient];
+}
 
 app.get("/", async (req, res) => {
+  console.log(new Date());
+
   // Get total supply
   const totalSupply = await axios({
     method: "get",
     url: `${process.env.REST_API_ENDPOINT}/cosmos/bank/v1beta1/supply/ujuno`,
   });
-
-  console.log(totalSupply.data);
+  console.log("Total supply: ", totalSupply.data.amount.amount);
 
   // Get community pool
   const communityPool = await axios({
     method: "get",
     url: `${process.env.REST_API_ENDPOINT}/cosmos/distribution/v1beta1/community_pool`,
   });
-
-  console.log(communityPool.data);
+  console.log("Community pool: ", communityPool.data.pool[0].amount);
 
   // Subtract community pool from total supply
   let circulatingSupply =
     totalSupply.data.amount.amount - communityPool.data.pool[0].amount;
 
-  console.log(circulatingSupply);
+  // Create Tendermint RPC Client
+  const [client, tmClient] = await makeClientWithAuth(process.env.RPC_ENDPOINT);
 
-  // // TODO query vesting account info and subtract from total
-  // const client = await StargateClient.connect(process.env.RPC_ENDPOINT);
-  // const [client, tmClient] = await makeClientWithAuth(process.env.RPC_ENDPOINT);
-  // console.log(client);
+  // Iterate through vesting accounts and subtract vesting balance from total
+  for (let i = 0; i < vestingAccounts.length; i++) {
+    const account = await client.auth.account(vestingAccounts[i]);
+    let accountInfo = PeriodicVestingAccount.decode(account.value);
+    let originalVesting =
+      accountInfo.baseVestingAccount.originalVesting[0].amount;
+    let delegatedFree =
+      accountInfo.baseVestingAccount.delegatedFree.length > 0
+        ? accountInfo.baseVestingAccount.delegatedFree[0].amount
+        : 0;
 
-  // vestingAccounts.forEach(async (acc) => {
-  //   const account = await client.auth.account(acc);
-  //   console.log(account);
-  //   // const accountInfo = new TextDecoder().decode(account.value);
-  //   // console.log(accountInfo);
-  //   // let accountInfo = await client.getAccount(account);
-  //   // console.log(accountInfo);
-  //   // let balance = await client.getBalance(account, "ujuno");
-  //   // console.log(balance);
-  // });
+    circulatingSupply -= originalVesting - delegatedFree;
+  }
+  console.log("Circulating supply: ", circulatingSupply);
 
   res.json({
     circulatingSupply,
