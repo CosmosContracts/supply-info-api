@@ -1,5 +1,6 @@
 const axios = require("axios");
 const express = require("express");
+const { Decimal } = require("@cosmjs/math");
 const { QueryClient, setupAuthExtension } = require("@cosmjs/stargate");
 const { Tendermint34Client } = require("@cosmjs/tendermint-rpc");
 const {
@@ -62,11 +63,16 @@ app.get("/", async (req, res) => {
   console.log("Circulating supply: ", circulatingSupply);
 
   res.json({
-    circulatingSupply,
-    communityPool: communityPool.data.pool[0].amount,
-    decimals: 6,
-    denom: "ujuno",
-    totalSupply: totalSupply.data.amount.amount,
+    circulatingSupply: Decimal.fromAtomics(circulatingSupply, 6).toString(),
+    communityPool: Decimal.fromAtomics(
+      communityPool.data.pool[0].amount.split(".")[0],
+      6
+    ).toString(),
+    denom: "JUNO",
+    totalSupply: Decimal.fromAtomics(
+      totalSupply.data.amount.amount,
+      6
+    ).toString(),
   });
 });
 
