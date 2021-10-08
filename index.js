@@ -23,25 +23,29 @@ async function makeClientWithAuth(rpcUrl) {
   return [QueryClient.withExtensions(tmClient, setupAuthExtension), tmClient];
 }
 
-app.get("/", async (req, res) => {
-  console.log(new Date());
+// Declare variables
+let totalSupply, communityPool, circulatingSupply;
+
+// Gets supply info from chain
+async function updateData() {
+    console.log("Updating supply info", new Date());
 
   // Get total supply
-  const totalSupply = await axios({
+  totalSupply = await axios({
     method: "get",
     url: `${process.env.REST_API_ENDPOINT}/cosmos/bank/v1beta1/supply/ujuno`,
   });
   console.log("Total supply: ", totalSupply.data.amount.amount);
 
   // Get community pool
-  const communityPool = await axios({
+  communityPool = await axios({
     method: "get",
     url: `${process.env.REST_API_ENDPOINT}/cosmos/distribution/v1beta1/community_pool`,
   });
   console.log("Community pool: ", communityPool.data.pool[0].amount);
 
   // Subtract community pool from total supply
-  let circulatingSupply =
+  circulatingSupply =
     totalSupply.data.amount.amount - communityPool.data.pool[0].amount;
 
   // Create Tendermint RPC Client
@@ -61,7 +65,15 @@ app.get("/", async (req, res) => {
     circulatingSupply -= originalVesting - delegatedFree;
   }
   console.log("Circulating supply: ", circulatingSupply);
+}
 
+// Get initial data
+updateData();
+
+// Update data on an interval (2 hours)
+setInterval(updateData, 7200000);
+
+app.get("/", async (req, res) => {
   res.json({
     circulatingSupply: Decimal.fromAtomics(circulatingSupply, 6).toString(),
     communityPool: Decimal.fromAtomics(
