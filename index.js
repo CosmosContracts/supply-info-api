@@ -88,6 +88,28 @@ app.get("/", async (req, res) => {
   });
 });
 
+app.get("/circulating-supply", async (req, res) => {
+  res.send(Decimal.fromAtomics(circulatingSupply, 6).toString())
+});
+
+app.get("/total-supply", async (req, res) => {
+  res.send(Decimal.fromAtomics(
+      totalSupply.data.amount.amount,
+      6
+  ).toString())
+});
+
+app.get("/community-pool", async (req, res) => {
+  res.send(Decimal.fromAtomics(
+      communityPool.data.pool[0].amount.split(".")[0],
+      6
+    ).toString())
+});
+
+app.get("/denom", async (req, res) => {
+  res.send("JUNO")
+});
+
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
 });
