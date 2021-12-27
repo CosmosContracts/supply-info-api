@@ -1,15 +1,24 @@
 # supply-info-api
+
 An API for basic info about the Juno token supply.
 
-Example response:
+The base route `/` returns all info in JSON:
+
 ```json
 {
-  "circulatingSupply":"31511686.018182",
-  "communityPool":"20008679.404121",
-  "denom":"JUNO",
-  "totalSupply":"65336746.085331"
+  "circulatingSupply": "31511686.018182",
+  "communityPool": "20008679.404121",
+  "denom": "JUNO",
+  "totalSupply": "65336746.085331"
 }
 ```
+
+## Other routes
+
+- `/circulating-supply`: returns circulating supply in plain text
+- `/total-supply`: returns total supply in plain text
+- `/community-pool`: returns community pool size in plain text
+- `/denom`: returns denom in plain text
 
 ### How circulating supply is calculated
 
