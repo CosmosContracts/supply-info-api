@@ -11,6 +11,8 @@ const {
 
 require("dotenv").config();
 
+const denom = process.env.DENOM || "ujuno";
+
 const vestingAccounts = process.env.VESTING_ACCOUNTS
   ? process.env.VESTING_ACCOUNTS.split(",")
   : [];
@@ -24,16 +26,16 @@ async function makeClientWithAuth(rpcUrl) {
 }
 
 // Declare variables
-let totalSupply, communityPool, circulatingSupply;
+let totalSupply, communityPool, communityPoolMainDenomTotal, circulatingSupply;
 
 // Gets supply info from chain
 async function updateData() {
-    console.log("Updating supply info", new Date());
+  console.log("Updating supply info", new Date());
 
   // Get total supply
   totalSupply = await axios({
     method: "get",
-    url: `${process.env.REST_API_ENDPOINT}/cosmos/bank/v1beta1/supply/ujuno`,
+    url: `${process.env.REST_API_ENDPOINT}/cosmos/bank/v1beta1/supply/${denom}`,
   });
   console.log("Total supply: ", totalSupply.data.amount.amount);
 
@@ -42,11 +44,19 @@ async function updateData() {
     method: "get",
     url: `${process.env.REST_API_ENDPOINT}/cosmos/distribution/v1beta1/community_pool`,
   });
-  console.log("Community pool: ", communityPool.data.pool[0].amount);
 
-  // Subtract community pool from total supply
-  circulatingSupply =
-    totalSupply.data.amount.amount - communityPool.data.pool[0].amount;
+  // Loop through pool balances to find denom
+  for (let i in communityPool.data.pool) {
+    if (communityPool.data.pool[i].denom === denom) {
+      console.log("Community pool: ", communityPool.data.pool[i].amount);
+
+      communityPoolMainDenomTotal = communityPool.data.pool[i].amount;
+
+      // Subtract community pool from total supply
+      circulatingSupply =
+        totalSupply.data.amount.amount - communityPool.data.pool[i].amount;
+    }
+  }
 
   // Create Tendermint RPC Client
   const [client, tmClient] = await makeClientWithAuth(process.env.RPC_ENDPOINT);
@@ -77,10 +87,10 @@ app.get("/", async (req, res) => {
   res.json({
     circulatingSupply: Decimal.fromAtomics(circulatingSupply, 6).toString(),
     communityPool: Decimal.fromAtomics(
-      communityPool.data.pool[0].amount.split(".")[0],
+      communityPoolMainDenomTotal.split(".")[0],
       6
     ).toString(),
-    denom: "JUNO",
+    denom: denom.substring(1).toUpperCase(),
     totalSupply: Decimal.fromAtomics(
       totalSupply.data.amount.amount,
       6
@@ -89,25 +99,21 @@ app.get("/", async (req, res) => {
 });
 
 app.get("/circulating-supply", async (req, res) => {
-  res.send(Decimal.fromAtomics(circulatingSupply, 6).toString())
+  res.send(Decimal.fromAtomics(circulatingSupply, 6).toString());
 });
 
 app.get("/total-supply", async (req, res) => {
-  res.send(Decimal.fromAtomics(
-      totalSupply.data.amount.amount,
-      6
-  ).toString())
+  res.send(Decimal.fromAtomics(totalSupply.data.amount.amount, 6).toString());
 });
 
 app.get("/community-pool", async (req, res) => {
-  res.send(Decimal.fromAtomics(
-      communityPool.data.pool[0].amount.split(".")[0],
-      6
-    ).toString())
+  res.send(
+    Decimal.fromAtomics(communityPoolMainDenomTotal.split(".")[0], 6).toString()
+  );
 });
 
 app.get("/denom", async (req, res) => {
-  res.send("JUNO")
+  res.send(denom.substring(1).toUpperCase());
 });
 
 app.listen(port, () => {

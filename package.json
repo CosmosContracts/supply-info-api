@@ -17,9 +17,9 @@
   },
   "homepage": "https://github.com/CosmosContracts/supply-info-api#readme",
   "dependencies": {
-    "@cosmjs/math": "^0.26.1",
-    "@cosmjs/stargate": "^0.26.1",
-    "@cosmjs/tendermint-rpc": "^0.26.1",
+    "@cosmjs/math": "^0.26.5",
+    "@cosmjs/stargate": "^0.26.5",
+    "@cosmjs/tendermint-rpc": "^0.26.5",
     "axios": "^0.22.0",
     "cosmjs-types": "^0.2.0",
     "dotenv": "^10.0.0",
