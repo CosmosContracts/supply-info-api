@@ -64,10 +64,16 @@ async function updateData() {
       method: "get",
       url: `${process.env.REST_API_ENDPOINT}/cosmos/staking/v1beta1/pool`,
     });
+    
+    // Get inflation
+    inflation = await axios({
+      method: "get",
+      url: `${process.env.REST_API_ENDPOINT}/cosmos/mint/v1beta1/inflation`,
+    });
 
     totalStaked = stakingInfo.data.pool.bonded_tokens;
     bondedRatio = totalStaked / totalSupply.data.amount.amount;
-    apr = 35 / bondedRatio;
+    apr = inflation.data.inflation / bondedRatio;
 
     console.log("APR: ", apr);
     console.log("Total Staked: ", totalStaked);
